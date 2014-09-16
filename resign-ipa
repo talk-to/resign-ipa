@@ -1,0 +1,82 @@
+#!/usr/bin/env ruby
+
+require 'shell'
+require 'optparse'
+require 'tmpdir'
+
+options = {}
+opts = OptionParser.new do |opts|
+  opts.banner = "Usage: #{opts.program_name} [options] source_ipa destination_ipa"
+
+  opts.on("-e", "--entitlements file", "Entitlements file to replace the existing ones") do |e|
+    options[:entitlements] = e
+  end
+
+  opts.on("-p", "--provisioning-profile provisioning-profile", "The new provisioning profile") do |p|
+    options[:provisioning_profile] = p
+  end
+
+  opts.on("-h", "--help", "Display help") do |h|
+    options[:help] = true
+  end
+end
+opts.parse!
+
+if (options[:help]) 
+  puts opts.to_a
+  exit 0
+end
+
+if (!options[:provisioning_profile] || !ARGV[0] || !ARGV[1])
+  STDERR.puts "Missing arguments"
+  STDERR.puts opts.to_a
+  exit 1
+end
+
+def set_plist_value(path, value, plist)
+  system "PlistBuddy -c 'Set #{path} #{value}' #{plist}"
+end
+
+def resign(dir, src_ipa, dst_ipa, options)
+  pwd = Dir.pwd
+  Dir.chdir(dir)
+  system "unzip #{src_ipa}"
+  app = Dir.glob("Payload/*.app")[0]
+
+  provisioning_profile = options[:provisioning_profile]
+  plain_mobileprovision = "plain.mobileprovision"
+  system "security cms -D -i #{provisioning_profile} -o #{plain_mobileprovision}"
+
+  identifier = `PlistBuddy -c 'Print :Entitlements:application-identifier' #{plain_mobileprovision}`
+  identifier = identifier.tr!("\n", "")
+  if (!identifier || identifier.length == 0)
+    STDERR.puts "Couldn't get identifier"
+    exit 1
+  end
+  bundle_id = identifier.split(".")[1..10].join(".")
+  info_plist = "#{app}/Info.plist"
+  system "PlistBuddy -c 'Set :CFBundleIdentifier #{bundle_id}' #{info_plist}"
+
+  entitlements = nil
+  if (!options[:entitlements])
+    entitlements = "entitlements.plist"
+    system "PlistBuddy -x -c 'Print :Entitlements' #{plain_mobileprovision} > #{entitlements}"
+  else
+    entitlements = options[:entitlements]
+  end
+
+  system "cp #{provisioning_profile} #{app}/embedded.mobileprovision"
+
+  cert="certificate"
+  system "PlistBuddy -c 'Print :DeveloperCertificates:0' #{provisioning_profile} > #{cert}"
+  fingerprint = `openssl x509 -inform DER -in /tmp/cert -noout -fingerprint -sha1`
+  fingerprint = fingerprint.tr("\n", "").gsub(/^.*Fingerprint=/, "").gsub(/:/, "")
+  system "codesign -f -s #{fingerprint} --entitlements #{entitlements} -vv #{app}"
+  system "xcrun -sdk iphoneos PackageApplication -s #{fingerprint} -o #{dst_ipa} #{app}"
+
+  Dir.chdir(pwd)
+end
+
+tmpdir = Dir.mktmpdir
+resign(tmpdir, ARGV[0], ARGV[1], options)
+puts tmpdir
