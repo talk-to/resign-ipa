@@ -6,14 +6,15 @@ require 'tmpdir'
 
 options = {}
 opts = OptionParser.new do |opts|
-  opts.banner = "Usage: #{opts.program_name} [options] source_ipa destination_ipa"
+  opts.banner = "Usage: #{opts.program_name} -p provisioning_profile [-e entitlements] source.ipa destination.ipa"
 
-  opts.on("-e", "--entitlements file", "Entitlements file to replace the existing ones") do |e|
-    options[:entitlements] = e
+  opts.on("-p", "--provisioning-profile provisioning-profile", "The new provisioning profile (required)") do |p|
+    options[:provisioning_profile] = p
   end
 
-  opts.on("-p", "--provisioning-profile provisioning-profile", "The new provisioning profile") do |p|
-    options[:provisioning_profile] = p
+  opts.on("-e", "--entitlements file", "Entitlements file to replace the existing entitlements.",
+          "If this option is not provided, then entitlements from the provisioning profile will be used") do |e|
+    options[:entitlements] = e
   end
 
   opts.on("-h", "--help", "Display help") do |h|
