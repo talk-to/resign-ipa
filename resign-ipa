@@ -34,6 +34,8 @@ end
 def resign(dir, src_ipa, dst_ipa, options)
   pwd = Dir.pwd
   Dir.chdir(dir)
+
+  debug "Unzipping ipa"
   system "unzip -q #{src_ipa}"
   app = Dir.glob("Payload/*.app")[0]
 
@@ -41,41 +43,46 @@ def resign(dir, src_ipa, dst_ipa, options)
 
   # Remove the codesigning blobs around the provisioning profile and
   # get the plaintext plist
+  debug "Extracting plain provisioning profile"
   plain_mobileprovision = "plain.mobileprovision"
   system "security cms -D -i #{provisioning_profile} -o #{plain_mobileprovision}"
 
-  # Extract the bundle id from provisioning profile
+  debug "Extracting bundle id from provisioning profile"
   identifier = `PlistBuddy -c 'Print :Entitlements:application-identifier' #{plain_mobileprovision}`
   identifier = identifier.tr!("\n", "")
   if (!identifier || identifier.length == 0)
-    STDERR.puts "Couldn't get identifier"
+    debug "Couldn't get identifier"
     exit 1
   end
   bundle_id = identifier.split(".")[1..10].join(".")
 
-  # Update the bundle id in Info.plist
+  debug "Updating info plist with new bundle id"
   info_plist = "#{app}/Info.plist"
   system "PlistBuddy -c 'Set :CFBundleIdentifier #{bundle_id}' #{info_plist}"
 
   # Use the given entitlements or extract from provisioning profile
   entitlements = nil
   if (!options[:entitlements])
+    debug "Extracting entitlements from provisioning profile"
     entitlements = "entitlements.plist"
     system "PlistBuddy -x -c 'Print :Entitlements' #{plain_mobileprovision} > #{entitlements}"
   else
     entitlements = options[:entitlements]
   end
 
-  # Replace the embedded provisioning profile
+  debug "Replacing embedded provisioning profile"
   system "cp #{provisioning_profile} #{app}/embedded.mobileprovision"
 
   # Codesign the app and package
   # Get the codesigning identity from the provisioning profile
+  debug "Extracting certificate and fingerprint"
   cert="certificate"
-  system "PlistBuddy -c 'Print :DeveloperCertificates:0' #{provisioning_profile} > #{cert}"
+  system "PlistBuddy -c 'Print :DeveloperCertificates:0' #{plain_mobileprovision} > #{cert}"
   fingerprint = `openssl x509 -inform DER -in /tmp/cert -noout -fingerprint -sha1`
   fingerprint = fingerprint.tr("\n", "").gsub(/^.*Fingerprint=/, "").gsub(/:/, "")
+  debug "Codesigning the app"
   system "codesign -f -s #{fingerprint} --entitlements #{entitlements} -vv #{app}"
+  debug "Packaging the app"
   system "xcrun -sdk iphoneos PackageApplication -s #{fingerprint} -o #{dst_ipa} #{app}"
 
   Dir.chdir(pwd)
@@ -87,20 +94,20 @@ def main
   args = opts.parse(ARGV)
 
   if (options[:help])
-    puts opts.to_a
-    exit 0
+    debug opts.to_a
+    return 0
   end
 
   if (!options[:provisioning_profile] || !args[0] || !args[1])
-    STDERR.puts "Missing arguments"
-    STDERR.puts opts.to_a
-    exit 1
+    debug "Missing arguments"
+    debug opts.to_a
+    return 1
   end
 
   tmpdir = Dir.mktmpdir
+  debug "Working dir: #{tmpdir}"
   resign(tmpdir, args[0], args[1], options)
-  puts tmpdir
-  exit 0
+  0
 end
 
-main
+exit main
