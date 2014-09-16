@@ -45,9 +45,13 @@ def resign(dir, src_ipa, dst_ipa, options)
   app = Dir.glob("Payload/*.app")[0]
 
   provisioning_profile = options[:provisioning_profile]
+
+  # Remove the codesigning blobs around the provisioning profile and
+  # get the plaintext plist
   plain_mobileprovision = "plain.mobileprovision"
   system "security cms -D -i #{provisioning_profile} -o #{plain_mobileprovision}"
 
+  # Extract the bundle id from provisioning profile
   identifier = `PlistBuddy -c 'Print :Entitlements:application-identifier' #{plain_mobileprovision}`
   identifier = identifier.tr!("\n", "")
   if (!identifier || identifier.length == 0)
@@ -55,9 +59,12 @@ def resign(dir, src_ipa, dst_ipa, options)
     exit 1
   end
   bundle_id = identifier.split(".")[1..10].join(".")
+
+  # Update the bundle id in Info.plist
   info_plist = "#{app}/Info.plist"
   system "PlistBuddy -c 'Set :CFBundleIdentifier #{bundle_id}' #{info_plist}"
 
+  # Use the given entitlements or extract from provisioning profile
   entitlements = nil
   if (!options[:entitlements])
     entitlements = "entitlements.plist"
@@ -66,8 +73,11 @@ def resign(dir, src_ipa, dst_ipa, options)
     entitlements = options[:entitlements]
   end
 
+  # Replace the embedded provisioning profile
   system "cp #{provisioning_profile} #{app}/embedded.mobileprovision"
 
+  # Codesign the app and package
+  # Get the codesigning identity from the provisioning profile
   cert="certificate"
   system "PlistBuddy -c 'Print :DeveloperCertificates:0' #{provisioning_profile} > #{cert}"
   fingerprint = `openssl x509 -inform DER -in /tmp/cert -noout -fingerprint -sha1`
