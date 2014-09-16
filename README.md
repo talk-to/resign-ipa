@@ -58,6 +58,11 @@ PlistBuddy -x -c 'Print :Entitlements' plain_profile.plist
 
 If the provisioning profile has all the entitlements that the app asks
 for, then you don't need to explicitly provide any entitlements. If
-they don't, then create a new entitlements plist (at the very least, you
-will need to update `application-identifier`,
-`com.apple.developer.team-identifier` and `keychain-access-groups`).
+they don't, then create a new entitlements plist[1] and provide it
+using the `-e` switch.
+
+## Notes
+
+1. At the very least, you will need to update
+`application-identifier`, `com.apple.developer.team-identifier` and
+`keychain-access-groups`
