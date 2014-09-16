@@ -17,7 +17,7 @@ With all this in place, resign a .ipa with the following command.
 resign-ipa -p new_profile.mobileprovision source.ipa destination.ipa
 ```
 
-For an explaination of the various steps involved in resigning an iOS app, see [this gist].
+For an explaination of the various steps involved in resigning an iOS app, see [this gist][].
 
 [resign gist]: https://gist.github.com/chaitanyagupta/9a2a13f0a3e6755192f7
 
