@@ -8,6 +8,8 @@ def debug(*args)
   STDERR.puts(*args)
 end
 
+PLIST_BUDDY = '/usr/libexec/PlistBuddy'
+
 def options_parser(options)
   OptionParser.new do |opts|
     opts.banner = "Usage: #{opts.program_name} -p provisioning_profile [-e entitlements] source.ipa destination.ipa"
@@ -28,7 +30,7 @@ def options_parser(options)
 end
 
 def set_plist_value(path, value, plist)
-  system "PlistBuddy -c 'Set #{path} #{value}' #{plist}"
+  system "#{PLIST_BUDDY} -c 'Set #{path} #{value}' #{plist}"
 end
 
 def resign(dir, src_ipa, dst_ipa, options)
@@ -48,7 +50,7 @@ def resign(dir, src_ipa, dst_ipa, options)
   system "security cms -D -i #{provisioning_profile} -o #{plain_mobileprovision}"
 
   debug "Extracting bundle id from provisioning profile"
-  identifier = `PlistBuddy -c 'Print :Entitlements:application-identifier' #{plain_mobileprovision}`
+  identifier = `#{PLIST_BUDDY} -c 'Print :Entitlements:application-identifier' #{plain_mobileprovision}`
   identifier = identifier.tr!("\n", "")
   if (!identifier || identifier.length == 0)
     debug "Couldn't get identifier"
@@ -58,14 +60,14 @@ def resign(dir, src_ipa, dst_ipa, options)
 
   debug "Updating info plist with new bundle id"
   info_plist = "#{app}/Info.plist"
-  system "PlistBuddy -c 'Set :CFBundleIdentifier #{bundle_id}' #{info_plist}"
+  system "#{PLIST_BUDDY} -c 'Set :CFBundleIdentifier #{bundle_id}' #{info_plist}"
 
   # Use the given entitlements or extract from provisioning profile
   entitlements = nil
   if (!options[:entitlements])
     debug "Extracting entitlements from provisioning profile"
     entitlements = "entitlements.plist"
-    system "PlistBuddy -x -c 'Print :Entitlements' #{plain_mobileprovision} > #{entitlements}"
+    system "#{PLIST_BUDDY} -x -c 'Print :Entitlements' #{plain_mobileprovision} > #{entitlements}"
   else
     entitlements = options[:entitlements]
   end
@@ -77,7 +79,7 @@ def resign(dir, src_ipa, dst_ipa, options)
   # Get the codesigning identity from the provisioning profile
   debug "Extracting certificate and fingerprint"
   cert="certificate"
-  system "PlistBuddy -c 'Print :DeveloperCertificates:0' #{plain_mobileprovision} > #{cert}"
+  system "#{PLIST_BUDDY} -c 'Print :DeveloperCertificates:0' #{plain_mobileprovision} > #{cert}"
   fingerprint = `openssl x509 -inform DER -in /tmp/cert -noout -fingerprint -sha1`
   fingerprint = fingerprint.tr("\n", "").gsub(/^.*Fingerprint=/, "").gsub(/:/, "")
   debug "Codesigning the app"
