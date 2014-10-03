@@ -80,7 +80,7 @@ def resign(dir, src_ipa, dst_ipa, options)
   debug "Extracting certificate and fingerprint"
   cert="certificate"
   system "#{PLIST_BUDDY} -c 'Print :DeveloperCertificates:0' #{plain_mobileprovision} > #{cert}"
-  fingerprint = `openssl x509 -inform DER -in /tmp/cert -noout -fingerprint -sha1`
+  fingerprint = `openssl x509 -inform DER -in #{cert} -noout -fingerprint -sha1`
   fingerprint = fingerprint.tr("\n", "").gsub(/^.*Fingerprint=/, "").gsub(/:/, "")
   debug "Codesigning the app"
   system "codesign -f -s #{fingerprint} --entitlements #{entitlements} -vv #{app}"
