@@ -29,10 +29,6 @@ def options_parser(options)
   end
 end
 
-def set_plist_value(path, value, plist)
-  system "#{PLIST_BUDDY} -c 'Set #{path} #{value}' #{plist}"
-end
-
 def resign(dir, src_ipa, dst_ipa, options)
   pwd = Dir.pwd
   Dir.chdir(dir)
