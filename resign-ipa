@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'shell'
+require 'shellwords'
 require 'optparse'
 require 'tmpdir'
 
@@ -15,12 +16,12 @@ def options_parser(options)
     opts.banner = "Usage: #{opts.program_name} -p provisioning_profile [-e entitlements] source.ipa destination.ipa"
 
     opts.on("-p", "--provisioning-profile provisioning-profile", "The new provisioning profile (required)") do |p|
-      options[:provisioning_profile] = p
+      options[:provisioning_profile] = p.shellescape
     end
 
     opts.on("-e", "--entitlements file", "Entitlements file to replace the existing entitlements.",
             "If this option is not provided, then entitlements from the provisioning profile will be used") do |e|
-      options[:entitlements] = e
+      options[:entitlements] = e.shellescape
     end
 
     opts.on("-h", "--help", "Display help") do |h|
@@ -104,7 +105,7 @@ def main
 
   tmpdir = Dir.mktmpdir
   debug "Working dir: #{tmpdir}"
-  resign(tmpdir, args[0], args[1], options)
+  resign(tmpdir, args[0].shellescape, args[1].shellescape, options)
   0
 end
 
