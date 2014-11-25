@@ -4,6 +4,20 @@
 provisioning profile. The provisioning profile can have a different
 signing identity from the original provisioning profile.
 
+## Installation
+
+* The `bin/resign-ipa` is a standalone Ruby script that you can place
+  in your path.
+
+* This repository is also a Ruby Gem, so you can use it by adding the
+  following to your Gemfile
+
+        gem 'resign-ipa', :git => 'git@github.com:talk-to/resign-ipa.git', :tag => '0.0.1'
+
+  followed by a `bundle install`.
+
+## Usage
+
 To use this script, you would need
 
 1. A .ipa to resign
@@ -66,3 +80,7 @@ using the `-e` switch.
 1. At the very least, you will need to update
 `application-identifier`, `com.apple.developer.team-identifier` and
 `keychain-access-groups`
+
+## Releasing a new version
+
+Update `resign-ipa.gemspec` and then run `rake release:tag`.
